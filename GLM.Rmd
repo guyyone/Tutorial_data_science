@@ -1,0 +1,467 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(stringr)
+library(DataExplorer)
+library (table1)
+library (Hmisc)
+library(missForest)
+library(naniar)
+library(rstatix)
+library(forcats)
+library(binom)
+library(GGally)
+library(ISLR)
+library(ggplot2)
+library(leaflet)
+library(psych)
+library(flextable)
+```
+
+```{r}
+library(lmtest)
+library(nortest)
+library(MASS)
+library(outliers)
+library(tseries)
+library(car)
+library(ggpubr)
+library(moments)
+```
+
+
+```{r}
+# 	Pour aller plus loin : quels sont les facteurs indépendants associés au ronflement dans cette population. 
+library(finalfit)
+library(Hmisc)
+```
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+theme_set(
+  theme_bw() +
+    theme(legend.position = "top")
+  )
+```
+
+```{r}
+data <- read.csv('C:/Users/AZIMUT Info/OneDrive/Desktop/repos/df_classification_article.csv', sep=",")
+print(dim(data))
+print(head(data, 4))
+```
+
+
+```{r}
+# selection de la base d'étude
+df <- subset(df, select = c(sexe, age, imc, vems, cvf, vemscvf, aex, type_trouble))
+```
+
+
+```{r}
+# mise en conformité des variables
+df$sexe <- as.factor(df$sexe)
+#df$Ronflements <- as.factor(df$Ronflements)
+#df$type_trouble <- as.factor(df$type_trouble)
+#Récodage des variables
+levels(df$sexe) <- c("homme", "femme")
+levels(df$type_trouble) <- c("normal", "obstructif", "restrictif")
+head(df, 3)
+```
+
+
+```{r}
+# Résumé numérique de la variable sexe
+# Effectifs
+table_sexe = table(df$sexe)
+table_type_trouble = table(df$type_trouble)
+print(table_type_trouble)
+print(table_sexe)
+```
+
+```{r}
+# Proportion en % avec 1 seul chiffre après la virgule
+prop_sexe = prop.table(table_sexe) * 100
+prop_type_trouble = prop.table(table_type_trouble) * 100
+## Résulats avec arrondi = round
+print(round(prop_sexe, 1))
+print(round(prop_type_trouble, 1))
+```
+
+```{r}
+dependent = "type_trouble" 
+explanatory = c( "aex","vems","cvf", "vemscvf")
+```
+
+```{r}
+# Modèle de fonction pour analyse des Odds ratios
+res_glm_uni_multi <- df %>%
+    finalfit(dependent, explanatory)
+res_glm_uni_multi
+```
+
+
+```{r}
+# Créer un vecteur de données
+donnees <- c(301, 56, 24)
+
+# Créer un vecteur d'étiquettes
+etiquettes <- c("normal", "obstructif", "restrictif")
+
+# Définir les couleurs souhaitées
+couleurs <- c("gray", "gold", "cornflowerblue")
+
+# Tracer le diagramme circulaire avec des couleurs personnalisées
+pie(donnees,
+    labels = etiquettes,
+    main = "Visualisation du vecteur type_trouble",
+    col = couleurs)
+```
+
+```{r}
+layout(matrix(1:6,2,3))
+smoothScatter(df[, c("age", "aex")])
+smoothScatter(df[, c("imc", "aex")])
+smoothScatter(df[, c("vems", "aex")])
+smoothScatter(df[, c("cvf", "aex")])
+smoothScatter(df[, c("vemscvf", "aex")])
+```
+
+```{r}
+f1 <- ggplot(data=df, aes(x=aex)) + geom_density(fill="gray", color="blue", alpha=0.5) + labs(x = "Densité aex", y = "")+geom_vline(aes(xintercept = mean(aex)), linetype = "dashed")+theme_classic()
+f1
+ggsave("C:/Users/AZIMUT Info/OneDrive/Desktop/repos/aex_density.png", f1, width = 10, height = 6, dpi = 300)
+```
+
+```{r}
+# test de normalité
+# Définir la variable à tester
+variable <- df$aex
+
+# Effectuer le test de Kolmogorov-Smirnov
+resultat <- ks.test(variable, "pnorm")
+
+# Afficher les résultats
+print(resultat)
+```
+
+```{r}
+# Définir la variable à tester
+variable <- df$aex
+resultat <- lillie.test(variable)
+
+# afficher les résultats
+print(resultat)
+```
+
+```{r}
+f2 <- ggplot(data=df, aes(x=imc)) + geom_density(fill="gray", color="blue", alpha=0.5) + labs(x = "IMC", y = "")+geom_vline(aes(xintercept = mean(imc)), linetype = "dashed")+theme_classic()
+f2
+ggsave("C:/Users/AZIMUT Info/OneDrive/Desktop/repos/imc.png", f2, width = 10, height = 6, dpi = 300)
+```
+
+```{r}
+# Définir la variable à tester
+variable1 <- df$imc
+resultat1 <- lillie.test(variable1)
+
+# afficher les résultats
+print(resultat1)
+```
+
+```{r}
+describe(df)
+```
+
+```{r}
+summary(df)
+```
+
+```{r}
+# Sélectionner les lignes où sexe = 1
+df_homme <- subset(df, sexe == "homme")
+df_femme <- subset(df, sexe == "femme")
+```
+
+```{r}
+df_homme <- df[df$sexe == "homme", ]
+dim(df_homme)
+```
+```{r}
+df_homme <- df[df$sexe == "homme", ]
+df_femme <- df[df$sexe == "femme", ]
+print(summary(df_homme))
+print(summary(df_femme))
+```
+```{r}
+p1 <- prop.table(table(df_homme$type_trouble))
+p2 <- prop.table(table(df_femme$type_trouble))
+print("proportion des hommes")
+print(p1*100)
+print("proportion des femme")
+print(p2*100)
+```
+```{r}
+# Définir les données
+normal_homme <- 128 # nombre de succès dans le groupe 1
+taille_homme <- 172 # taille de l'échantillon du groupe 1
+normal_femme <- 173 # nombre de succès dans le groupe 2
+taille_femme <- 209 # taille de l'échantillon du groupe 2
+
+# Effectuer le test de proportion
+resultat <- prop.test(c(normal_homme, normal_femme), c(taille_homme, taille_femme), alternative = "two.sided")
+
+# Afficher les résultats
+print(resultat)
+```
+
+```{r}
+# Sélectionner les lignes où type_trouble est soit "obstructif" soit "restrictif"
+df_trouble <- subset(df, type_trouble == "obstructif" | type_trouble == "restrictif")
+
+# Sélectionner les lignes où type_trouble est "normal"
+df_normal <- subset(df, type_trouble == "normal")
+
+# Extraire les données numériques pour les deux échantillons
+échantillon1 <- df_trouble$age
+échantillon2 <- df_normal$age
+
+# Effectuer le test de Wilcoxon signé-rang
+resultat <- wilcox.test(échantillon1, échantillon2, paired = FALSE, alternative = "two.sided")
+
+# Afficher les résultats
+print(resultat)
+```
+```{r}
+# Sélectionner les lignes où type_trouble est soit "obstructif" soit "restrictif"
+df_trouble <- subset(df, type_trouble == "obstructif" | type_trouble == "restrictif")
+
+# Sélectionner les lignes où type_trouble est "normal"
+df_normal <- subset(df, type_trouble == "normal")
+
+# Extraire les données numériques pour les deux échantillons
+échantillon3 <- df_trouble$imc
+échantillon4 <- df_normal$imc
+
+# Effectuer le test de Wilcoxon signé-rang
+resultat <- wilcox.test(échantillon3, échantillon4, paired = FALSE, alternative = "two.sided")
+
+# Afficher les résultats
+print(resultat)
+```
+
+```{r}
+description_bivariee <- function(df, var_num, var_cat) {
+
+  # Vérifier que var_cat est une variable catégorielle
+  if (!is.factor(df[[var_cat]])) {
+    stop("La variable catégorielle doit être de type facteur.")
+  }
+
+  # Calculer les statistiques sommaires de la variable numérique pour chaque niveau de la variable catégorielle
+  stats_num <- data.frame(moyenne = tapply(df[[var_num]], df[[var_cat]], mean),
+                          mediane = tapply(df[[var_num]], df[[var_cat]], median),
+                          ecart_type = tapply(df[[var_num]], df[[var_cat]], sd),
+                          min = tapply(df[[var_num]], df[[var_cat]], min),
+                          max = tapply(df[[var_num]], df[[var_cat]], max),
+                          Q1 = tapply(df[[var_num]], df[[var_cat]], function(x) quantile(x, 0.25)),
+                          Q3 = tapply(df[[var_num]], df[[var_cat]], function(x) quantile(x, 0.75)))
+
+  # Ajouter le nom de la variable catégorielle en tant que première colonne du data frame
+  stats_num <- cbind(niveau = levels(df[[var_cat]]), stats_num)
+
+  # Renommer les colonnes du data frame
+  names(stats_num) <- c(var_cat, paste0(var_num, "_", c("moyenne", "mediane", "ecart_type", "min", "max", "Q1", "Q3")))
+
+  # Retourner le data frame contenant les statistiques sommaires
+  return(stats_num)
+}
+```
+
+```{r}
+# Appliquer la fonction description_bivariee() au data frame df_homme
+stats_age <- description_bivariee(df_homme, "imc", "type_trouble")
+
+# Afficher les résultats
+print(stats_age)
+```
+
+```{r}
+df_normal <- df[df$type_trouble == "normal", ]
+df_obstructif <- df[df$type_trouble == "obstructif", ]
+df_restrictif <- df[df$type_trouble == "restrictif", ]
+print(summary(df_normal))
+print(summary(df_obstructif))
+print(summary(df_restrictif))
+```
+
+```{r}
+odds_ratio <- function(df, var_num, var_cat) {
+  # Vérifier que var_cat est une variable catégorielle binaire
+  if (!is.factor(df[[var_cat]])) {
+    stop("La variable catégorielle doit être de type facteur.")
+  }
+  if (length(levels(df[[var_cat]])) != 2) {
+    stop("La variable catégorielle doit être binaire.")
+  }
+
+  # Créer un modèle de régression logistique
+  model <- glm(var_cat ~ var_num, data = df, family = binomial())
+
+  # Extraire les odds ratios et leurs intervalles de confiance à 95%
+  odds_ratio <- exp(coef(model))
+  conf_int <- exp(confint(model, level = 0.95))
+
+  # Créer un data frame contenant les résultats
+  results <- data.frame(odds_ratio = odds_ratio[2],
+                        conf_int_inf = conf_int[2, 1],
+                        conf_int_sup = conf_int[2, 2])
+
+  # Renommer les colonnes du data frame
+  names(results) <- c(paste0(var_cat, "_odds_ratio"),
+                      paste0(var_cat, "_conf_int_inf"),
+                      paste0(var_cat, "_conf_int_sup"))
+
+  # Retourner le data frame contenant les résultats
+  return(results)
+}
+```
+
+```{r}
+odds_ratio_multinomial <- function(df, var_num, var_cat) {
+  # Vérifier que var_cat est une variable catégorielle
+  if (!is.factor(df[[var_cat]])) {
+    stop("La variable catégorielle doit être de type facteur.")
+  }
+
+  # Créer un modèle de régression logistique multinomiale
+  model <- multinom(var_cat ~ var_num, data = df)
+
+  # Extraire les odds ratios et leurs intervalles de confiance à 95%
+  odds_ratios <- exp(coef(model))
+  conf_ints <- exp(confint(model, level = 0.95))
+
+  # Créer un data frame contenant les résultats
+  results <- data.frame(modalite = rownames(odds_ratios),
+                        odds_ratio = odds_ratios[, 2],
+                        conf_int_inf = conf_ints[, 1, 2],
+                        conf_int_sup = conf_ints[, 2, 2])
+
+  # Renommer les colonnes du data frame
+  names(results) <- c(var_cat, paste0(var_cat, "_odds_ratio"),
+                      paste0(var_cat, "_conf_int_inf"),
+                      paste0(var_cat, "_conf_int_sup"))
+
+  # Retourner le data frame contenant les résultats
+  return(results)
+}
+```
+
+```{r}
+summary(df$type_trouble)
+```
+
+```{r}
+head(df, 2)
+```
+
+```{r}
+# Créer un boxplot de la variable numérique en fonction de la variable catégorielle
+f2 <- ggplot(df, aes(x = aex, y = type_trouble)) +
+  geom_boxplot(aes(fill = type_trouble), alpha = 0.5) +
+  labs(title = "",
+       x = "AEX",
+       y = "type_trouble") +
+  theme_minimal()
+ggsave("C:/Users/AZIMUT Info/OneDrive/Desktop/repos/repartition_trouble.png", f2, width = 10, height = 6, dpi = 300)
+```
+
+```{r}
+# Anova à un facteur entre aex et le type de trouble
+
+# Créer un modèle linéaire
+model <- lm(aex ~ type_trouble, data = df)
+
+# Effectuer le test ANOVA
+result <- anova(model)
+
+# Afficher le résultat
+print(result)
+
+# Afficher le résumé du modèle, y compris la p-value
+print(summary(model))
+
+# Obtenir l'intervalle de confiance
+print(confint(model))
+```
+
+```{r}
+# Charger la bibliothèque MASS
+library(MASS)
+```
+
+```{r}
+# Convert response variable to numeric
+df$type_trouble <- as.numeric(df$type_trouble)
+
+# Fit regression model
+model <- lm(type_trouble ~ vems + cvf + vemscvf + aex, data = df)
+
+# Perform model selection using stepAIC()
+model_generalized <- stepAIC(model, direction = "both", trace = FALSE)
+
+# Display model summary
+summary(model_generalized)
+```
+
+
+```{r}
+# Calculer les odds ratios à partir des coefficients de régression
+OR <- exp(coef(model_generalized))
+
+# Afficher les odds ratios
+print("odds ratio")
+print(OR)
+
+# Calculer les intervalles de confiance
+IC <- confint(model_generalized)
+print("confident intervalle")
+print(IC)
+```
+```{r}
+# Supposons que vous avez déjà créé un modèle GLM appelé "model"
+
+# Utiliser stepAIC pour sélectionner le modèle final
+model_generalized <- stepAIC(model, direction = "both", trace = FALSE)
+
+# Extraire les coefficients du modèle final
+final_coef <- coef(model_generalized)
+
+# Afficher les coefficients du modèle final
+print(final_coef)
+```
+```{r}
+# Supposons que vous avez déjà créé un modèle GLM appelé "model"
+
+# Obtenir l'intervalle de confiance pour les coefficients du modèle
+conf_int <- confint(model)
+
+# Afficher l'intervalle de confiance
+print(conf_int)
+
+# Obtenir le résumé du modèle, y compris les p-values
+model_summary <- summary(model)
+
+# Extraire les p-values pour les coefficients du modèle
+print("intervalles de confiance et p-values")
+print(model_summary$coefficients[, 4])
+```
+

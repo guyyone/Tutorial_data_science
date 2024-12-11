@@ -1,0 +1,142 @@
+---
+title: "semaine_18_Romeo"
+author: "Mougnutou Yone Guy Christian"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+#df <- read.csv('https://raw.githubusercontent.com/pefura/IFPERA/main/Base_ronflements_IFPERA.csv', sep=";")
+#head(df, 3)
+```
+
+
+```{r}
+# 1.	Quelle est la principale méthode utilisée pour la réduction de la dimensionnalité  des données quantitatives?
+print("APC (Analyse des Composantes Principales): qui consiste à transformer des variables corrélées en nouvelles variables décorrélées en projetant les données dans le sens de la variance croissante")
+```
+
+```{r}
+# 2.	Quelle est la principale méthode utilisée pour la réduction de la dimensionnalité  d’un dataset contenant des données quantitatives et qualitatives
+"LDA (Analyse de discriminant linéaire)"
+```
+
+```{r}
+library(ggplot2)
+library(ggrepel)
+library(cowplot)
+```
+
+```{r}
+library(plspm)
+library(GGally)
+library(caret)
+library(e1071)
+library(caTools)
+library(ggpubr)
+library(factoextra)
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+data <- read.csv('https://raw.githubusercontent.com/pefura/IFPERA/main/dataset_PCA.csv', sep=",")
+```
+
+```{r}
+head(data,3)
+```
+
+```{r}
+# 3.1.	Sélectionner la sous-base « dataset » de data contenant les 100 premiers individus et les variables suivantes : weight, hip,  waist, neck, bmi, WHR
+
+dataset <- select(slice(data, 1:100), weight, hip,  waist, neck, bmi, WHR)
+dim(dataset)
+head(dataset, 3)
+```
+
+```{r}
+quant_df<-c("weight", "hip",  "waist", "neck", "bmi", "WHR")
+dataset[,quant_df]<-lapply(dataset[,quant_df], as.numeric)
+```
+
+
+```{r}
+str(dataset)
+```
+```{r}
+# 3.2.	Quelle est la typologie des variables de dataset ?
+```
+
+```{r}
+# 3.3.	Produire une matrice de corrélation avec l’ensemble des variables de dataset et interpréter cette matrice.
+cor(dataset)
+#indique les valeurs de corrélation, qui mesurent le degré de relation linéaire entre les différentes variables
+```
+
+```{r}
+# 3.4.	Faire une réduction de la dimension des variables de dataset en 2 composantes principales et donner la part de variance totale expliquée par ces deux composantes.
+
+```
+
+```{r}
+ggpairs(dataset,
+  columns = c("weight", "hip",  "waist", "neck", "bmi", "WHR")
+)
+```
+
+```{r}
+# Partie 2 : Clustering  (25 pts)
+```
+
+```{r}
+df <- read.csv("https://raw.githubusercontent.com/pefura/IFPERA/main/Cameroon_lung_function.csv", sep = ";")
+```
+
+```{r}
+head(df, 3)
+```
+
+```{r}
+# 1.	Sélectionner la sous-base de df(que vous nommerez clf) contenant les variables suivantes : sex, age, height, fvc, fev
+```
+
+```{r}
+clf <- select(df, 'sex', 'age', 'height', 'fvc', 'fev')
+```
+
+```{r}
+head(clf, 3)
+```
+
+```{r}
+# 2.	Faire un regroupement en 4 clusters de l’ensemble des individus de df.
+# Calculer k-means avec k = 3
+set.seed(123)
+res.km <- kmeans(scale(clf), 4, nstart = 25)
+# Clustering K-means montrant le groupe de chaque individu
+res.km$cluster
+fviz_cluster(res.km, data = clf,
+             palette = c("#2E9FDF", "#00AFBB", "#E7B800", "#C71585"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+             )
+```
+```{r}
+# 3.	Produire au moins 3 graphiques permettant de comprendre le regroupement en cluster des individus, l’un des graphiques étant un dendrogramme. 
+```
+
+
+```{r}
+# Partie 3 : Trouver les facteurs de risque (50 pts)
+data_TB <- read.csv('https://raw.githubusercontent.com/pefura/IFPERA/main/cohort_TB_death.csv')
+```
+
+```{r}
+head(data_TB, 3)
+```

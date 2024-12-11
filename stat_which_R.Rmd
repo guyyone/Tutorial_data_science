@@ -1,0 +1,396 @@
+---
+title: "semaine16_Romeo"
+author: "Mougnutoub Yone Guy Christian"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+library(tidyverse)
+#library(dplyr)
+library(stringr)
+library(DataExplorer)
+library (table1)
+library (Hmisc)
+library(missForest)
+library(naniar)
+library(ggpubr)
+library(rstatix)
+library(forcats)
+library(binom)
+library(GGally)
+library(ISLR)
+library(ggplot2)
+library(leaflet)
+library(psych)
+library(flextable)
+library(gridExtra)
+library(nlme)
+```
+
+
+```{r}
+library(finalfit)
+library(flextable)
+#library(kableExtra)
+library(RM.weights)
+```
+
+```{r}
+library(lmtest)
+library(car)
+library(tseries)
+library(outliers)
+```
+
+
+```{r}
+d <- read.csv('https://raw.githubusercontent.com/pefura/IFPERA/main/base_pleuresie.csv', sep=";")
+```
+
+```{r}
+head(d, 3)
+```
+
+```{r}
+describe(d)
+```
+
+
+```{r}
+qual_df<-c('Sexe', 'Vih', 'TbPleu')
+quant_df<-c('Ageanne', 'Poids', 'Taille', 'proteinespleurales', 'CRPpleurale', 'LDHpleurale', 'glucosepleural')
+d[,qual_df]<-lapply(d[,qual_df], as.factor)
+d[,quant_df]<-lapply(d[,quant_df], as.numeric)
+```
+
+```{r}
+describe(d)
+```
+
+
+
+```{r}
+# 1.	Importer la table des données « Cameroon_lung_function » dans votre environnement de travail. 
+```
+
+```{r}
+df <- read.csv('https://raw.githubusercontent.com/pefura/IFPERA/main/Cameroon_lung_function.csv', sep=";")
+```
+
+```{r}
+# EDA
+```
+
+```{r}
+head(df, 3)
+```
+
+
+```{r}
+# Noms des variables de la base de données 'df'
+names(df)
+```
+
+```{r}
+# Dimension de la table des données'df'
+dim(df)
+#La base 'df' contient 9 variables et 1777 individus
+```
+
+```{r}
+# Structure de la base de données'df'
+str(df)
+```
+
+```{r}
+#La base 'df' a deux variables categorielles 'sex et ethnicity' et les variables type integer 'height', et 'ID' je m’en vais les transformer respectivement en variable type factor et numerique  afin de faciliter la suite de analyse
+
+cat_df=c('sex', 'ethnicity')
+df[,cat_df] <- lapply(df[,cat_df] , as.factor)
+df$height<-as.numeric(df$height)
+df$ID<-as.numeric(df$ID)
+str(df)
+```
+
+
+```{r}
+# Checher les valeurs abérrantes et les valeurs manquantes, la fonction summary  donne une idée globale de df
+summary(df)
+```
+```{r}
+#Aucune valeur manquante observée dans la base des données 'df'
+```
+
+
+```{r}
+# Se rassurer de l’exploration en faisant un plot
+plot_missing(df)
+```
+
+
+
+```{r}
+#Recodage de la variable 'sex'
+df$sex <- fct_recode(df$sex,
+                "masculin" = "1",
+                "féminin" = "2")
+head(df,3)
+```
+
+```{r}
+# 2.	Sélectionner la sous-base nommée « df1 » de « df » ne comportant que les sujets de sexe féminin  âgés de 20 à 50 ans (20 et 50 ans étant inclus). 
+```
+
+```{r}
+df1<-filter(df, sex == "féminin", age >=20, age <= 50)
+dim(df1)
+head(df1,3)
+```
+```{r}
+# 3.	Existe-il une relation linéaire entre fev et l’âge d’une part et entre fev et la taille d’autre part dans df1 (chez les sujets de sexe masculin âgés de 20 à 50 ans)?
+```
+
+```{r}
+# Appellons df2 la sous base de df constituées des sujets de sexe masculin agés de 20 à 50 ans
+df1 <- filter(df, sex == "masculin", age >=20, age <= 50)
+```
+
+```{r}
+dim(df1)
+```
+
+```{r}
+# Existe-il une relation linéaire entre fev et l’âge dans df1
+df1%>% 
+  ggplot(aes(x = age, y = fev)) +
+  geom_point()+
+  geom_smooth(method="auto", se=TRUE, fullrange=FALSE, level=0.95)
+```
+
+```{r}
+# Une faible relation linéaire négative 
+```
+
+```{r}
+#Existe-il une relation linéaire entre fev et la taille dans df1
+df1%>% 
+  ggplot(aes(x = height, y = fev)) +
+  geom_point()+
+  geom_smooth(method="auto", se=TRUE, fullrange=FALSE, level=0.95)
+```
+```{r}
+#Une relation non linéaire 
+```
+
+```{r}
+#4.	Modélisation linéaire de fev en fonction de l’âge et de la taille dans df1(le modèle obtenu sera nommé « model ».
+```
+
+```{r}
+model= lm(fev ~ age + height, data=df1)
+summary(model)
+```
+```{r}
+#4.1.	Ecrire une équation de prédiction linéaire de fev en fonction de l’âge et de la taille.
+# fev = -1.186144 - 0.018767*age + 0.026790*height
+```
+
+```{r}
+# 4.2.	Quelle est la part de variance de fev expliquée par ces deux paramètres en supposant que l’équation est valide ?
+```
+
+```{r}
+anova(model)
+```
+
+```{r}
+#5.	Le modèle « model » respecte t’il les conditions d’application d’une régression linéaire (il faut vérifier l’homogénéité des variances, la normalité de distribution, l’absence d’outliers et l’homoscédasticité des résidus) ? 
+```
+
+
+```{r}
+layout(matrix(1:4,2,2))
+plot(model)
+```
+
+```{r}
+#L’homogénéité des variances
+bptest(model)
+```
+
+```{r}
+#Les variances sont homogénes (p-value < 0.05 est significative)
+```
+
+```{r}
+#La normalité de distribution
+```
+
+```{r}
+#Verifiaction graphique 
+ggplot(df1) +
+  aes(x = fev) +
+  geom_histogram(fill ="blue",binwidth = 0.2, colour = "black")+
+  ggtitle("FEV of participants") +
+  xlab("fev (L)") +
+  ylab("Count")
+```
+
+```{r}
+# distribution presque normale 
+```
+
+
+```{r}
+#Verification avec le test Shapiro-Wilk
+```
+
+```{r}
+shapiro.test(df1$fev)
+```
+
+```{r}
+#Le test confrime la normalité de la variable fev avec p-value < 0.05
+```
+
+```{r}
+#Normalité des résidus
+```
+
+```{r}
+jarque.bera.test(model$res)
+```
+
+```{r}
+#les residus ne sont pas normalement distribués
+```
+
+```{r}
+# Vérification graphique des outliers
+```
+
+```{r}
+df1%>% 
+  ggplot(aes(fev)) +
+  geom_boxplot()
+```
+
+```{r}
+#Présence des outliers
+```
+
+```{r}
+outlierTest(model)
+```
+```{r}
+#Présence des outliers avec la p-value < 0.05
+```
+
+```{r}
+#l’homoscédasticité des résidus
+```
+
+```{r}
+jarque.bera.test(model$res)
+```
+```{r}
+# p << 0.05 donc les erreurs stochastiques de la régression varient très peu pour les différentes observations
+```
+
+```{r}
+plot(model$res)
+```
+
+```{r}
+# Le modèle « model » ne respecte pas les conditions d’application d’une régression linéaire 
+```
+
+
+```{r}
+# Partie 2 : Régression logistique et modèles linéaires généralisés
+```
+
+```{r}
+# 1.	Soit la base des données suivante disponible à l’adresse URL : https://raw.githubusercontent.com/pefura/IFPERA/main/Distal_AFL_pour_analyse_full_1.csv
+```
+
+```{r}
+# Importer cette base de données  nommée la data.
+
+```
+
+```{r}
+data <- read.csv('https://raw.githubusercontent.com/pefura/IFPERA/main/Distal_AFL_pour_analyse_full_1.csv', sep=";")
+```
+
+```{r}
+dim(data)
+```
+
+```{r}
+head(data, 3)
+```
+
+```{r}
+# 2.	Extraire de « data » une base des données nommée « dataset » contenant tous les individus mais seulement les variables suivantes : sex, age, education_rec, daf_limitation.
+dataset <- select(data, 'sex', 'age', 'education_rec', 'daf_limitation')
+```
+
+```{r}
+head(dataset, 3)
+```
+
+```{r}
+# 2.1. Préciser la dimension de dataset.
+dim(dataset)
+# dataset à 4 variables et 4661 observation
+```
+
+```{r}
+# 2.2.  Indiquer la structure des données de dataset.
+str(dataset)
+```
+
+```{r}
+# 3. Nous cherchons à savoir si le sexe, l’âge et l’éducation sont des facteurs associés (ou par extension des facteurs de risque) à  l’obstruction bronchique distale en utilisant la régression logistique.
+```
+
+```{r}
+# 3.1. Déterminer les odds ratio non ajustés ainsi que leur intervalle de confiance à 95%, associés aux variables indépendantes ci-dessus de « dataset » en étudiant leur association avec l’obstruction bronchique distale (un tableau résumant ces informations est nécessaire).
+```
+
+```{r}
+dependent = c("daf_limitation" )
+features = c('sex', 'age', 'education_rec')
+```
+
+```{r}
+res_glm_uni <- dataset%>%
+    glmuni(dependent, features) %>% 
+    fit2df(estimate_suffix=" (univarié)")
+
+res_glm_uni
+```
+
+```{r}
+#kable(LR_model,row.names=FALSE, align=c("l", "r", "r"))
+```
+
+
+```{r}
+# 3.2. Construire un modèle de régression logistique multivariée (que vous nommerez : LR_model) avec toutes les variables indépendantes de dataset et déterminer les potentiels facteurs de risque de l’obstruction bronchique.
+```
+
+```{r}
+LR_model <- dataset %>%
+    finalfit(dependent, features)
+ 
+LR_model
+```
+
+```{r}
+#kable(LR_model,row.names=FALSE, align=c("l", "r", "r"))
+```
